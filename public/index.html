@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video Call App</title>
+  <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #f4f4f9;
+    }
+    .container {
+      max-width: 500px;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      text-align: center;
+    }
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .btn-primary { background-color: #007bff; color: #fff; }
+    .btn-danger { background-color: #dc3545; color: #fff; }
+    .btn-success { background-color: #28a745; color: #fff; }
+    .input-group {
+      margin-bottom: 15px;
+    }
+    .input-group label { font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="registerSection">
+      <h2>Register</h2>
+      <label>Enter Username:</label>
+      <input type="text" id="username" placeholder="Your Username">
+      <button class="btn-primary" onclick="register()">Register</button>
+    </div>
+
+    <div id="callerSection" style="display: none;">
+      <h3>Start a Call</h3>
+      <label>Username to Call:</label>
+      <input type="text" id="callUser" placeholder="Recipient's Username">
+      <label>Meeting Link:</label>
+      <input type="text" id="videoLink" placeholder="Meeting Link">
+      <button class="btn-success" onclick="callUser()">Call User</button>
+    </div>
+
+    <div id="incomingCallSection" style="display: none;">
+      <h3>Incoming Call</h3>
+      <p>Call from <span id="callerName"></span></p>
+      <button class="btn-success" onclick="acceptCall()">Accept</button>
+      <button class="btn-danger" onclick="declineCall()">Decline</button>
+    </div>
+  </div>
+
+  <script>
+    const socket = io('https://a86c-106-51-200-247.ngrok-free.app'); // Replace 'localhost' with ngrok URL after starting ngrok
+    let myUsername = '';
+
+    function register() {
+      myUsername = document.getElementById('username').value;
+      if (!myUsername) {
+        alert("Please enter a username.");
+        return;
+      }
+      socket.emit('register', myUsername);
+      document.getElementById('registerSection').style.display = 'none';
+      document.getElementById('callerSection').style.display = 'block';
+    }
+
+    function callUser() {
+      const toUser = document.getElementById('callUser').value;
+      const videoLink = document.getElementById('videoLink').value;
+      if (!toUser || !videoLink) {
+        alert("Please enter both recipient's username and a video link.");
+        return;
+      }
+      socket.emit('call_user', { fromUser: myUsername, toUser, videoLink });
+    }
+
+    socket.on('incoming_call', ({ fromUser, toUser, videoLink }) => {
+      if (toUser === myUsername) {
+        document.getElementById('callerSection').style.display = 'none';
+        document.getElementById('incomingCallSection').style.display = 'block';
+        document.getElementById('callerName').textContent = fromUser;
+        window.videoLink = videoLink;
+      }
+    });
+
+    function acceptCall() {
+      const caller = document.getElementById('callerName').textContent;
+      socket.emit('accept_call', { fromUser: caller });
+      window.location.href = window.videoLink;
+    }
+
+    function declineCall() {
+      const caller = document.getElementById('callerName').textContent;
+      socket.emit('decline_call', { fromUser: caller });
+      document.getElementById('incomingCallSection').style.display = 'none';
+      document.getElementById('callerSection').style.display = 'block';
+    }
+
+    socket.on('call_accepted', () => {
+      alert("Your call was accepted!");
+    });
+
+    socket.on('call_declined', () => {
+      alert("Your call was declined.");
+    });
+  </script>
+</body>
+</html>
